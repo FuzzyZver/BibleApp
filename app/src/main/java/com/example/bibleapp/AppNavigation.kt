@@ -9,6 +9,8 @@ import androidx.navigation.navArgument
 import com.example.bibleapp.screens.BookScreen
 import com.example.bibleapp.screens.HomeScreen
 import com.example.bibleapp.screens.CategoryScreen
+import com.example.bibleapp.screens.AuthorsScreen
+import com.example.bibleapp.screens.AuthorDetailsScreen
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
@@ -34,6 +36,19 @@ fun AppNavigation(navController: NavHostController) {
         ) { backStackEntry ->
             val bookTitle = backStackEntry.arguments?.getString("bookTitle") ?: "Неизвестная книга"
             BookScreen(bookTitle, navController)
+        }
+
+        // Новый маршрут для списка авторов
+        composable("authors") {
+            AuthorsScreen(navController = navController)
+        }
+
+        // Новый маршрут для деталей автора (имя автора передается как аргумент)
+        composable("author/{authorName}",
+            arguments = listOf(navArgument("authorName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val authorNameEncoded = backStackEntry.arguments?.getString("authorName") ?: return@composable
+            AuthorDetailsScreen(navController = navController, authorNameEncoded = authorNameEncoded)
         }
     }
 }
