@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -61,5 +62,9 @@ dependencies {
     implementation("androidx.compose.runtime:runtime:1.7.4")
     implementation("androidx.compose.ui:ui:1.7.4")
     implementation("androidx.compose.material3:material3:1.3.0")
-    
+    val roomVersion = "2.6.1" // актуальная версия на 2025 год
+
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
 }

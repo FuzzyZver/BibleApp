@@ -5,112 +5,175 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.example.bibleapp.R // Заглушка, предполагающая, что у вас есть изображение
-import com.example.bibleapp.ui.theme.BibleAppTheme // Предполагаем, что у вас есть тема
+import data.local.BookEntity // <-- Используем нашу Entity вместо BookDetails
+import data.local.AppDatabase // <-- Для доступа к базе данных
+import com.example.bibleapp.BookRepository // <-- Ваш класс Репозитория
+import kotlinx.coroutines.launch
+import com.example.bibleapp.R
 
-// --- МОДЕЛЬ ДАННЫХ КНИГИ (чтобы было что показать) ---
-data class BookDetails(
-    val title: String,
-    val author: String,
-    val year: Int,
-    val symbolCount: Int,
-    val pageCount: Int,
-    val description: String,
-    val coverResourceId: Int // ID ресурса для изображения обложки
-)
-
-// --- ГЛАВНЫЙ КОМПОНЕНТ ЭКРАНА КНИГИ ---
+// УДАЛЯЕМ старую data class BookDetails
+// УДАЛЯЕМ старую функцию getSampleBookDetails
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BookScreen(bookTitle: String, navController: NavHostController) {
 
-    // 1. ЗАГЛУШКА ДЛЯ ДАННЫХ:
-    // В реальном приложении здесь будет логика:
-    // val book = viewModel.getBookDetails(bookTitle) или запрос к БД/API.
-    val bookDetails = getSampleBookDetails(bookTitle)
+    val context = LocalContext.current
+
+    // 1. Инициализируем репозиторий (как мы делали в CategoryScreen)
+    val repository = remember {
+        val dao = AppDatabase.getDatabase(context).bookDao()
+        BookRepository(dao)
+    }
+
+    // 2. Состояние для хранения данных книги
+    var bookEntity by remember { mutableStateOf<BookEntity?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // 3. Загружаем данные из Room при первом запуске экрана
+    LaunchedEffect(key1 = bookTitle) {
+        loading = true
+        errorMessage = null
+        bookEntity = null
+        try {
+            // Выполняем запрос к БД по названию книги
+            val book = repository.getBookByTitle(bookTitle)
+            bookEntity = book // Сохраняем результат
+        } catch (e: Exception) {
+            errorMessage = "Ошибка загрузки данных: ${e.message}"
+        } finally {
+            loading = false
+        }
+    }
+
+    // Выходим, если данных нет, чтобы избежать NullPointerException
+    val currentBook = bookEntity
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(bookDetails.title) }) // Название книги в заголовке
+            TopAppBar(
+                title = { Text(currentBook?.title ?: bookTitle) }, // Показываем название или заглушку
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                }
+            )
         }
     ) { innerPadding ->
-        // Используем verticalScroll, чтобы содержимое можно было прокручивать
-        Column(
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()) // Делает контент прокручиваемым
-                .padding(16.dp)
         ) {
-            // 2. БЛОК ОБЛОЖКИ И ОСНОВНОЙ ИНФОРМАЦИИ
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                // Изображение обложки
-                // ВАЖНО: Требует наличия изображения в папке res/drawable
-                Image(
-                    painter = painterResource(id = bookDetails.coverResourceId),
-                    contentDescription = "Обложка книги ${bookDetails.title}",
-                    modifier = Modifier
-                        .size(120.dp, 180.dp) // Размер обложки
-                        .padding(end = 16.dp)
-                )
-
-                // Колонка с метаданными
-                Column {
-                    Text(
-                        text = bookDetails.title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Автор: ${bookDetails.author}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Год издания: ${bookDetails.year}", style = MaterialTheme.typography.bodyMedium)
+            when {
+                loading -> {
+                    // Показываем индикатор загрузки
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider() // Разделительная линия
-
-            // 3. БЛОК ДОПОЛНИТЕЛЬНОЙ ИНФОРМАЦИИ
-            Text("Сводная информация", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            InfoRow(label = "Страниц", value = "${bookDetails.pageCount}")
-            InfoRow(label = "Символов", value = "${bookDetails.symbolCount}")
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider()
-
-            // 4. КРАТКОЕ ОПИСАНИЕ
-            Text("Краткое описание", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(bookDetails.description, style = MaterialTheme.typography.bodyLarge)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Кнопка для возврата (для наглядности)
-            Button(onClick = { navController.popBackStack() }) {
-                Text("Назад")
+                errorMessage != null -> {
+                    // Показываем ошибку
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                currentBook == null -> {
+                    // Книга не найдена
+                    Text(
+                        text = "Книга с названием \"$bookTitle\" не найдена.",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    // 4. Основной контент (когда книга успешно загружена)
+                    BookDetailsContent(book = currentBook, navController = navController)
+                }
             }
         }
     }
 }
 
-// --- ВСПОМОГАТЕЛЬНЫЕ КОМПОНЕНТЫ И ЗАГЛУШКИ ---
+// Выносим отображение содержимого в отдельную Composable-функцию
+@Composable
+fun BookDetailsContent(book: BookEntity, navController: NavHostController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // 2. БЛОК ОБЛОЖКИ И ОСНОВНОЙ ИНФОРМАЦИИ
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Изображение обложки
+            Image(
+                // Используем coverResId из BookEntity
+                painter = painterResource(id = book.coverResId),
+                contentDescription = "Обложка книги ${book.title}",
+                modifier = Modifier
+                    .size(120.dp, 180.dp)
+                    .padding(end = 16.dp)
+            )
 
+            // Колонка с метаданными
+            Column {
+                Text(
+                    text = book.title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Автор: ${book.author}", style = MaterialTheme.typography.bodyLarge)
+                Text("Год издания: ${book.year}", style = MaterialTheme.typography.bodyMedium)
+                Text("Категория: ${book.category}", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Divider()
+
+        // 3. БЛОК ДОПОЛНИТЕЛЬНОЙ ИНФОРМАЦИИ
+        Text("Сводная информация", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // NOTE: BookEntity не содержит symbolCount, поэтому я его удалил.
+        // Если он нужен, добавьте его в BookEntity.
+        InfoRow(label = "Страниц", value = "${book.pageCount}")
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Divider()
+
+        // 4. КРАТКОЕ ОПИСАНИЕ
+        Text("Краткое описание", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(book.description, style = MaterialTheme.typography.bodyLarge)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(onClick = { navController.popBackStack() }) {
+            Text("Назад")
+        }
+    }
+}
+
+// ... InfoRow остается прежним ...
 @Composable
 fun InfoRow(label: String, value: String) {
     Row(
@@ -123,32 +186,3 @@ fun InfoRow(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
-
-// ФУНКЦИЯ-ЗАГЛУШКА ДЛЯ ПОЛУЧЕНИЯ ДАННЫХ
-// ВАЖНО: Для корректной работы этого кода вам нужно создать в папке res/drawable
-// файл с названием 'book_cover_placeholder.png' или аналогичный.
-fun getSampleBookDetails(title: String): BookDetails {
-    // В реальном приложении здесь был бы поиск по базе данных.
-    return BookDetails(
-        title = title,
-        author = "Нарик Нарёк Андреевич",
-        year = 2025,
-        symbolCount = 50000,
-        pageCount = 30,
-        description = "Это краткое описание книги, которое обычно занимает несколько параграфов и дает читателю представление о её содержании, темах и основных идеях. В этом разделе мы подробно описываем, о чем идет речь в книге $title.",
-        coverResourceId = android.R.drawable.ic_dialog_info // Временно используем стандартную иконку Android
-        // coverResourceId = R.drawable.book_cover_placeholder // Используйте это, когда добавите свою картинку
-    )
-}
-
-// --- ПРЕДПРОСМОТР (Preview) ---
-/*
-@Preview(showBackground = true)
-@Composable
-fun BookScreenPreview() {
-    BibleAppTheme {
-        // Здесь нужен реальный NavController, но для Preview можно использовать заглушку
-        // BookScreen(bookTitle = "Евангелие от Иоанна", navController = rememberNavController())
-    }
-}
-*/

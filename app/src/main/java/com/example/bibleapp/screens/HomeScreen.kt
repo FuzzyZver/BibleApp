@@ -31,26 +31,26 @@ fun HomeScreen(navController: NavHostController) {
                     modifier = Modifier.padding(16.dp)
                 )
 
-                DrawerButton("Категория 1") {
+                DrawerButton("Классика") {
                     coroutineScope.launch { drawerState.close() }
-                    navController.navigate("category")
+                    navController.navigate("category/Классика")
                 }
 
-                DrawerButton("Категория 2") {
+                DrawerButton("История") {
                     coroutineScope.launch { drawerState.close() }
-                    navController.navigate("category")
+                    navController.navigate("category/История")
                 }
 
-                DrawerButton("Категория 3") {
+                DrawerButton("Наука") {
                     coroutineScope.launch { drawerState.close() }
-                    navController.navigate("category")
+                    navController.navigate("category/Наука")
                 }
             }
         }
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(title = { Text("Bible App") })
+                TopAppBar(title = { Text("LibraryApp") })
             },
             content = { innerPadding ->
                 Column(
@@ -84,7 +84,7 @@ fun HomeScreen(navController: NavHostController) {
                             ) {
                                 DrawerButton(item) {
                                     coroutineScope.launch { drawerState.close() }
-                                    navController.navigate("book")
+                                    navController.navigate("book/$item")
                                 }
                             }
                         }
