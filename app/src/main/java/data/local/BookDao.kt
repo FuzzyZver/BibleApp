@@ -23,9 +23,11 @@ interface BookDao {
     suspend fun getRandomBooks(count: Int): List<BookEntity>
 
     @Query("SELECT DISTINCT author FROM books ORDER BY author ASC")
-    suspend fun getAllAuthors(): List<String> // Получаем список уникальных авторов
+    suspend fun getAllAuthors(): List<String>
 
     @Query("SELECT * FROM books WHERE author = :authorName ORDER BY title ASC")
-    suspend fun getBooksByAuthor(authorName: String): List<BookEntity> // Получаем книги конкретного автора
+    suspend fun getBooksByAuthor(authorName: String): List<BookEntity>
 
+    @Query("SELECT * FROM books ORDER BY RANDOM() LIMIT 1")
+    suspend fun getRandomBook(): BookEntity?
 }

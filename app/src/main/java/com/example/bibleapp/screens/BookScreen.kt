@@ -1,9 +1,10 @@
 package com.example.bibleapp.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -11,46 +12,39 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import data.local.BookEntity // <-- Используем нашу Entity вместо BookDetails
-import data.local.AppDatabase // <-- Для доступа к базе данных
-import com.example.bibleapp.BookRepository // <-- Ваш класс Репозитория
-import kotlinx.coroutines.launch
-import com.example.bibleapp.R
+import com.example.bibleapp.BookRepository
+import data.local.AppDatabase
+import data.local.BookEntity
 
-// УДАЛЯЕМ старую data class BookDetails
-// УДАЛЯЕМ старую функцию getSampleBookDetails
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookScreen(bookTitle: String, navController: NavHostController) {
-
     val context = LocalContext.current
 
-    // 1. Инициализируем репозиторий (как мы делали в CategoryScreen)
     val repository = remember {
         val dao = AppDatabase.getDatabase(context).bookDao()
         BookRepository(dao)
     }
 
-    // 2. Состояние для хранения данных книги
     var bookEntity by remember { mutableStateOf<BookEntity?>(null) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // 3. Загружаем данные из Room при первом запуске экрана
     LaunchedEffect(key1 = bookTitle) {
         loading = true
         errorMessage = null
         bookEntity = null
         try {
-            // Выполняем запрос к БД по названию книги
-            val book = repository.getBookByTitle(bookTitle)
-            bookEntity = book // Сохраняем результат
+            bookEntity = repository.getBookByTitle(bookTitle)
         } catch (e: Exception) {
             errorMessage = "Ошибка загрузки данных: ${e.message}"
         } finally {
@@ -58,13 +52,17 @@ fun BookScreen(bookTitle: String, navController: NavHostController) {
         }
     }
 
-    // Выходим, если данных нет, чтобы избежать NullPointerException
     val currentBook = bookEntity
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(currentBook?.title ?: bookTitle) }, // Показываем название или заглушку
+                title = {
+                    Text(
+                        text = currentBook?.title ?: "Книга",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
@@ -73,116 +71,196 @@ fun BookScreen(bookTitle: String, navController: NavHostController) {
             )
         }
     ) { innerPadding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.surface)
         ) {
             when {
-                loading -> {
-                    // Показываем индикатор загрузки
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                errorMessage != null -> {
-                    // Показываем ошибку
-                    Text(
-                        text = errorMessage!!,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                currentBook == null -> {
-                    // Книга не найдена
-                    Text(
-                        text = "Книга с названием \"$bookTitle\" не найдена.",
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                else -> {
-                    // 4. Основной контент (когда книга успешно загружена)
-                    BookDetailsContent(book = currentBook, navController = navController)
-                }
+                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                errorMessage != null -> Text(
+                    text = errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                currentBook == null -> Text(
+                    text = "Книга \"$bookTitle\" не найдена",
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                else -> BookDetailsContent(book = currentBook, navController = navController)
             }
         }
     }
 }
 
-// Выносим отображение содержимого в отдельную Composable-функцию
 @Composable
 fun BookDetailsContent(book: BookEntity, navController: NavHostController) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // 2. БЛОК ОБЛОЖКИ И ОСНОВНОЙ ИНФОРМАЦИИ
+        // 📘 Верхняя часть с обложкой и названием
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Изображение обложки
             Image(
-                // Используем coverResId из BookEntity
                 painter = painterResource(id = book.coverResId),
                 contentDescription = "Обложка книги ${book.title}",
                 modifier = Modifier
-                    .size(120.dp, 180.dp)
-                    .padding(end = 16.dp)
+                    .size(130.dp, 190.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
 
-            // Колонка с метаданными
-            Column {
+            Spacer(Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = book.title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Автор: ${book.author}", style = MaterialTheme.typography.bodyLarge)
-                Text("Год издания: ${book.year}", style = MaterialTheme.typography.bodyMedium)
-                Text("Категория: ${book.category}", style = MaterialTheme.typography.bodyMedium)
+
+                Spacer(Modifier.height(8.dp))
+                Text("👤 ${book.author}", style = MaterialTheme.typography.bodyLarge)
+                Text("📅 ${book.year}", style = MaterialTheme.typography.bodyMedium)
+                Text("🏷 ${book.category}", style = MaterialTheme.typography.bodyMedium)
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-        Divider()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .clip(RoundedCornerShape(50))
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                        )
+                    )
+                )
+        )
 
-        // 3. БЛОК ДОПОЛНИТЕЛЬНОЙ ИНФОРМАЦИИ
-        Text("Сводная информация", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // NOTE: BookEntity не содержит symbolCount, поэтому я его удалил.
-        // Если он нужен, добавьте его в BookEntity.
-        InfoRow(label = "Страниц", value = "${book.pageCount}")
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.elevatedCardElevation(6.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Информация о книге",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(Modifier.height(12.dp))
+                InfoRow(label = "Страниц", value = "${book.pageCount}")
+                InfoRow(label = "Год издания", value = "${book.year}")
+                InfoRow(label = "Категория", value = book.category)
+            }
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
-        Divider()
+        Spacer(Modifier.height(24.dp))
 
-        // 4. КРАТКОЕ ОПИСАНИЕ
-        Text("Краткое описание", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(book.description, style = MaterialTheme.typography.bodyLarge)
+        if (book.quote.isNotBlank()) {
+            KeyQuoteCard(quote = book.quote)
+            Spacer(Modifier.height(24.dp))
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "Описание",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = book.description,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                lineHeight = 22.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
 
-        Button(onClick = { navController.popBackStack() }) {
-            Text("Назад")
+        Spacer(Modifier.height(32.dp))
+
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .clip(RoundedCornerShape(14.dp)),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        ) {
+            Text("Назад к списку", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun KeyQuoteCard(quote: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Ключевая цитата:",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "$quote",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    lineHeight = 24.sp
+                ),
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }
 
-// ... InfoRow остается прежним ...
 @Composable
 fun InfoRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        )
     }
 }

@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    // 1. Создаем репозиторий как ленивое свойство
     private val repository by lazy {
         val db = AppDatabase.getDatabase(applicationContext)
         BookRepository(db.bookDao())
@@ -24,7 +23,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ВАЖНО: Вызываем инициализацию сразу после super.onCreate
         initializeDatabase()
 
         setContent {
@@ -37,19 +35,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Проверяет, пуста ли БД, и если да, заполняет ее начальными данными.
-     */
     private fun initializeDatabase() {
         lifecycleScope.launch(Dispatchers.IO) {
             val currentBooks = repository.getBooks()
 
             if (currentBooks.isEmpty()) {
 
-                // 3. Вызываем функцию БЕЗ аргумента
                 val initialBooks = getInitialBooks()
 
-                // 4. Вставляем книги в базу данных
                 repository.insertBooks(initialBooks)
             }
         }

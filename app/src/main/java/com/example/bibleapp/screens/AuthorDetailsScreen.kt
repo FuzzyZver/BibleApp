@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthorDetailsScreen(navController: NavHostController, authorNameEncoded: String) {
-    // Декодируем имя автора, так как оно пришло из URL
     val authorName = remember { URLDecoder.decode(authorNameEncoded, StandardCharsets.UTF_8.toString()) }
 
     val context = LocalContext.current

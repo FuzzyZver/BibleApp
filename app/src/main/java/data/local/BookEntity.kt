@@ -12,6 +12,7 @@ data class BookEntity(
     val year: Int,
     val description: String,
     val pageCount: Int,
-    val coverResId: Int
+    val coverResId: Int,
+    val quote: String
 )
 

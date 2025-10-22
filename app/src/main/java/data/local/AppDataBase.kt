@@ -9,19 +9,16 @@ import androidx.room.RoomDatabase
 abstract class AppDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
 
-    // ДОБАВЬТЕ ЭТОТ КОМПАНЬОН-ОБЪЕКТ (Singleton)
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
         fun getDatabase(context: Context): AppDatabase {
-            // Если INSTANCE уже существует, просто вернем его
             return INSTANCE ?: synchronized(this) {
-                // Если INSTANCE все еще null, создаем базу данных
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "bible_app_db" // Имя вашего файла базы данных
+                    "bible_app_db" 
                 ).build()
                 INSTANCE = instance
                 instance

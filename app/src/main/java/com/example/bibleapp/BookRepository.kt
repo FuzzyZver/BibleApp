@@ -21,5 +21,7 @@ class BookRepository(private val dao: BookDao) {
 
     suspend fun getBooksByAuthor(authorName: String): List<BookEntity> = dao.getBooksByAuthor(authorName)
 
+    suspend fun getRandomBook(): BookEntity? = dao.getRandomBook()
+
 }
 

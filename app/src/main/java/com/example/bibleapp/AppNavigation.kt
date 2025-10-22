@@ -20,7 +20,6 @@ fun AppNavigation(navController: NavHostController) {
             HomeScreen(navController)
         }
 
-        // 1. ПЕРЕДАЧА ПАРАМЕТРА КАТЕГОРИИ
         composable(
             route = "category/{categoryName}",
             arguments = listOf(navArgument("categoryName") { type = NavType.StringType })
@@ -29,7 +28,6 @@ fun AppNavigation(navController: NavHostController) {
             CategoryScreen(navController, category)
         }
 
-        // 2. ПЕРЕДАЧА ПАРАМЕТРА НАЗВАНИЯ КНИГИ
         composable(
             route = "book/{bookTitle}",
             arguments = listOf(navArgument("bookTitle") { type = NavType.StringType })
@@ -38,12 +36,10 @@ fun AppNavigation(navController: NavHostController) {
             BookScreen(bookTitle, navController)
         }
 
-        // Новый маршрут для списка авторов
         composable("authors") {
             AuthorsScreen(navController = navController)
         }
 
-        // Новый маршрут для деталей автора (имя автора передается как аргумент)
         composable("author/{authorName}",
             arguments = listOf(navArgument("authorName") { type = NavType.StringType })
         ) { backStackEntry ->
